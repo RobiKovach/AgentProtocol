@@ -26,8 +26,16 @@ const DemoPage = () => {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const animationRef = useRef<number>();
 
-  const proposalText =
-    "Should the protocol increase the minimum stake requirement from 100 to 500 tokens?";
+  const [proposalText, setProposalText] = useState(
+    "Should the protocol increase the minimum stake requirement from 100 to 500 tokens?"
+  );
+
+  const proposalOptions = [
+    "Should the protocol increase the minimum stake requirement from 100 to 500 tokens?",
+    "Should agents be allowed to auto-delegate votes?",
+    "Should we switch to a quadratic voting system?",
+    "Should the treasury be diversified into real-world assets?",
+  ];
 
   const createAgents = (count: number): Agent[] => {
     const newAgents: Agent[] = [];
@@ -303,6 +311,35 @@ const DemoPage = () => {
                 <h3 className="text-lg font-semibold mb-2 text-cyan-400">
                   Current Proposal
                 </h3>
+                <div className="mb-4">
+                  <label className="text-sm text-cyan-400 mb-1 block">
+                    Choose a predefined proposal:
+                  </label>
+                  <select
+                    value={proposalText}
+                    onChange={(e) => setProposalText(e.target.value)}
+                    className="bg-gray-800 text-white border border-gray-600 rounded px-4 py-2 w-full"
+                  >
+                    {proposalOptions.map((option, idx) => (
+                      <option key={idx} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mb-6">
+                  <label className="text-sm text-cyan-400 mb-1 block">
+                    Or write your own:
+                  </label>
+                  <input
+                    type="text"
+                    value={proposalText}
+                    onChange={(e) => setProposalText(e.target.value)}
+                    className="bg-gray-800 text-white border border-gray-600 rounded px-4 py-2 w-full"
+                  />
+                </div>
+
                 <p className="text-gray-300 bg-gray-800 p-4 rounded-lg">
                   {proposalText}
                 </p>
