@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, Settings, Info } from 'lucide-react';
+import React, { useState, useEffect, useRef } from "react";
+import { Play, Pause, RotateCcw, Settings, Info } from "lucide-react";
 
 interface Agent {
   id: string;
@@ -8,13 +8,15 @@ interface Agent {
   vx: number;
   vy: number;
   trustScore: number;
-  decision: 'yes' | 'no' | 'abstain' | 'analyzing';
+  decision: "yes" | "no" | "abstain" | "analyzing";
   connections: string[];
   confidence: number;
   color: string;
 }
 
 const DemoPage = () => {
+  const [isFinished, setIsFinished] = useState(false);
+  const [result, setResult] = useState<"yes" | "no" | "abstain" | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isRunning, setIsRunning] = useState(false);
@@ -24,12 +26,20 @@ const DemoPage = () => {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const animationRef = useRef<number>();
 
-  const proposalText = "Should the protocol increase the minimum stake requirement from 100 to 500 tokens?";
+  const proposalText =
+    "Should the protocol increase the minimum stake requirement from 100 to 500 tokens?";
 
   const createAgents = (count: number): Agent[] => {
     const newAgents: Agent[] = [];
-    const colors = ['#00D2FF', '#8B5CF6', '#F59E0B', '#EF4444', '#10B981', '#EC4899'];
-    
+    const colors = [
+      "#00D2FF",
+      "#8B5CF6",
+      "#F59E0B",
+      "#EF4444",
+      "#10B981",
+      "#EC4899",
+    ];
+
     for (let i = 0; i < count; i++) {
       const agent: Agent = {
         id: `agent-${i}`,
@@ -38,7 +48,7 @@ const DemoPage = () => {
         vx: (Math.random() - 0.5) * 2,
         vy: (Math.random() - 0.5) * 2,
         trustScore: Math.random() * 0.8 + 0.2,
-        decision: 'analyzing',
+        decision: "analyzing",
         connections: [],
         confidence: Math.random() * 0.6 + 0.4,
         color: colors[i % colors.length],
@@ -47,12 +57,13 @@ const DemoPage = () => {
     }
 
     // Create random connections
-    newAgents.forEach(agent => {
+    newAgents.forEach((agent) => {
       const connectionCount = Math.floor(Math.random() * 3) + 1;
-      const availableAgents = newAgents.filter(a => a.id !== agent.id);
-      
+      const availableAgents = newAgents.filter((a) => a.id !== agent.id);
+
       for (let i = 0; i < connectionCount && i < availableAgents.length; i++) {
-        const randomAgent = availableAgents[Math.floor(Math.random() * availableAgents.length)];
+        const randomAgent =
+          availableAgents[Math.floor(Math.random() * availableAgents.length)];
         if (!agent.connections.includes(randomAgent.id)) {
           agent.connections.push(randomAgent.id);
         }
@@ -67,45 +78,75 @@ const DemoPage = () => {
   }, [agentCount]);
 
   const updateAgents = () => {
-    setAgents(prev => prev.map(agent => {
-      const newAgent = { ...agent };
-      
-      // Update position
-      newAgent.x += newAgent.vx * speed;
-      newAgent.y += newAgent.vy * speed;
-      
-      // Bounce off walls
-      if (newAgent.x <= 25 || newAgent.x >= 675) newAgent.vx *= -1;
-      if (newAgent.y <= 25 || newAgent.y >= 475) newAgent.vy *= -1;
-      
-      // Keep within bounds
-      newAgent.x = Math.max(25, Math.min(675, newAgent.x));
-      newAgent.y = Math.max(25, Math.min(475, newAgent.y));
-      
-      // Simulate decision making
-      if (Math.random() < 0.01) {
-        const decisions: Array<'yes' | 'no' | 'abstain'> = ['yes', 'no', 'abstain'];
-        const weights = [
-          newAgent.trustScore * newAgent.confidence,
-          (1 - newAgent.trustScore) * newAgent.confidence,
-          1 - newAgent.confidence
-        ];
-        
-        const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-        const random = Math.random() * totalWeight;
-        let cumulative = 0;
-        
-        for (let i = 0; i < decisions.length; i++) {
-          cumulative += weights[i];
-          if (random <= cumulative) {
-            newAgent.decision = decisions[i];
-            break;
+    setAgents((prev) =>
+      prev.map((agent) => {
+        const newAgent = { ...agent };
+
+        // Update position
+        newAgent.x += newAgent.vx * speed;
+        newAgent.y += newAgent.vy * speed;
+
+        // Bounce off walls
+        if (newAgent.x <= 25 || newAgent.x >= 675) newAgent.vx *= -1;
+        if (newAgent.y <= 25 || newAgent.y >= 475) newAgent.vy *= -1;
+
+        // Keep within bounds
+        newAgent.x = Math.max(25, Math.min(675, newAgent.x));
+        newAgent.y = Math.max(25, Math.min(475, newAgent.y));
+
+        // Simulate decision making
+        if (Math.random() < 0.01) {
+          const decisions: Array<"yes" | "no" | "abstain"> = [
+            "yes",
+            "no",
+            "abstain",
+          ];
+          const weights = [
+            newAgent.trustScore * newAgent.confidence,
+            (1 - newAgent.trustScore) * newAgent.confidence,
+            1 - newAgent.confidence,
+          ];
+
+          const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+          const random = Math.random() * totalWeight;
+          let cumulative = 0;
+
+          for (let i = 0; i < decisions.length; i++) {
+            cumulative += weights[i];
+            if (random <= cumulative) {
+              newAgent.decision = decisions[i];
+              break;
+            }
           }
         }
-      }
-      
-      return newAgent;
-    }));
+
+        const updatedAgents = [...prev];
+        const allDecided = updatedAgents.every(
+          (agent) => agent.decision !== "analyzing"
+        );
+
+        if (allDecided && !isFinished) {
+          setIsRunning(false);
+          setIsFinished(true);
+
+          const counts = {
+            yes: updatedAgents.filter((a) => a.decision === "yes").length,
+            no: updatedAgents.filter((a) => a.decision === "no").length,
+            abstain: updatedAgents.filter((a) => a.decision === "abstain")
+              .length,
+          };
+
+          const max = Math.max(counts.yes, counts.no, counts.abstain);
+          const winning = Object.entries(counts).find(
+            ([_, v]) => v === max
+          )?.[0] as "yes" | "no" | "abstain";
+
+          setResult(winning);
+        }
+
+        return newAgent;
+      })
+    );
   };
 
   const animate = () => {
@@ -127,15 +168,15 @@ const DemoPage = () => {
   const drawCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
+
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    
+
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
+
     // Draw grid background
-    ctx.strokeStyle = 'rgba(0, 210, 255, 0.1)';
+    ctx.strokeStyle = "rgba(0, 210, 255, 0.1)";
     ctx.lineWidth = 1;
     for (let x = 0; x < canvas.width; x += 50) {
       ctx.beginPath();
@@ -149,13 +190,13 @@ const DemoPage = () => {
       ctx.lineTo(canvas.width, y);
       ctx.stroke();
     }
-    
+
     // Draw connections
-    agents.forEach(agent => {
-      agent.connections.forEach(connectionId => {
-        const connectedAgent = agents.find(a => a.id === connectionId);
+    agents.forEach((agent) => {
+      agent.connections.forEach((connectionId) => {
+        const connectedAgent = agents.find((a) => a.id === connectionId);
         if (connectedAgent) {
-          ctx.strokeStyle = 'rgba(139, 92, 246, 0.3)';
+          ctx.strokeStyle = "rgba(139, 92, 246, 0.3)";
           ctx.lineWidth = 1;
           ctx.beginPath();
           ctx.moveTo(agent.x, agent.y);
@@ -164,29 +205,34 @@ const DemoPage = () => {
         }
       });
     });
-    
+
     // Draw agents
-    agents.forEach(agent => {
+    agents.forEach((agent) => {
       const radius = 8 + agent.trustScore * 4;
-      
+
       // Agent body
       ctx.fillStyle = agent.color;
       ctx.beginPath();
       ctx.arc(agent.x, agent.y, radius, 0, Math.PI * 2);
       ctx.fill();
-      
+
       // Decision indicator
-      ctx.fillStyle = agent.decision === 'yes' ? '#10B981' : 
-                     agent.decision === 'no' ? '#EF4444' : 
-                     agent.decision === 'abstain' ? '#F59E0B' : '#6B7280';
+      ctx.fillStyle =
+        agent.decision === "yes"
+          ? "#10B981"
+          : agent.decision === "no"
+          ? "#EF4444"
+          : agent.decision === "abstain"
+          ? "#F59E0B"
+          : "#6B7280";
       ctx.beginPath();
       ctx.arc(agent.x, agent.y, radius * 0.6, 0, Math.PI * 2);
       ctx.fill();
-      
+
       // Pulse effect for analyzing
-      if (agent.decision === 'analyzing') {
+      if (agent.decision === "analyzing") {
         const pulseRadius = radius + Math.sin(Date.now() * 0.01) * 3;
-        ctx.strokeStyle = agent.color + '40';
+        ctx.strokeStyle = agent.color + "40";
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(agent.x, agent.y, pulseRadius, 0, Math.PI * 2);
@@ -202,29 +248,31 @@ const DemoPage = () => {
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
+
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
+
     setMousePos({ x: e.clientX, y: e.clientY });
-    
-    const hoveredAgent = agents.find(agent => {
+
+    const hoveredAgent = agents.find((agent) => {
       const distance = Math.sqrt((agent.x - x) ** 2 + (agent.y - y) ** 2);
       return distance < 15;
     });
-    
+
     setHoveredAgent(hoveredAgent || null);
   };
 
   const resetSimulation = () => {
     setIsRunning(false);
     setAgents(createAgents(agentCount));
+    setIsFinished(false);
+    setResult(null);
   };
 
   const getDecisionStats = () => {
     const stats = { yes: 0, no: 0, abstain: 0, analyzing: 0 };
-    agents.forEach(agent => {
+    agents.forEach((agent) => {
       stats[agent.decision]++;
     });
     return stats;
@@ -242,7 +290,8 @@ const DemoPage = () => {
             </span>
           </h1>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-            Watch autonomous AI agents analyze and vote on governance proposals in real-time
+            Watch autonomous AI agents analyze and vote on governance proposals
+            in real-time
           </p>
         </div>
 
@@ -251,10 +300,14 @@ const DemoPage = () => {
           <div className="lg:col-span-2">
             <div className="bg-gray-900 border border-cyan-500/20 rounded-2xl p-6">
               <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-2 text-cyan-400">Current Proposal</h3>
-                <p className="text-gray-300 bg-gray-800 p-4 rounded-lg">{proposalText}</p>
+                <h3 className="text-lg font-semibold mb-2 text-cyan-400">
+                  Current Proposal
+                </h3>
+                <p className="text-gray-300 bg-gray-800 p-4 rounded-lg">
+                  {proposalText}
+                </p>
               </div>
-              
+
               <div className="relative">
                 <canvas
                   ref={canvasRef}
@@ -264,48 +317,70 @@ const DemoPage = () => {
                   onMouseMove={handleCanvasMouseMove}
                   onMouseLeave={() => setHoveredAgent(null)}
                 />
-                
+
                 {/* Tooltip */}
                 {hoveredAgent && (
-                  <div 
+                  <div
                     className="absolute z-10 bg-black border border-cyan-500/50 rounded-lg p-3 pointer-events-none"
-                    style={{ 
-                      left: mousePos.x - 200, 
+                    style={{
+                      left: mousePos.x - 200,
                       top: mousePos.y - 100,
-                      transform: 'translate(-50%, -100%)'
+                      transform: "translate(-50%, -100%)",
                     }}
                   >
                     <div className="text-sm">
-                      <div className="text-cyan-400 font-semibold mb-1">{hoveredAgent.id}</div>
-                      <div>Trust Score: {(hoveredAgent.trustScore * 100).toFixed(0)}%</div>
-                      <div>Decision: <span className={`font-semibold ${
-                        hoveredAgent.decision === 'yes' ? 'text-green-400' :
-                        hoveredAgent.decision === 'no' ? 'text-red-400' :
-                        hoveredAgent.decision === 'abstain' ? 'text-yellow-400' :
-                        'text-gray-400'
-                      }`}>{hoveredAgent.decision.toUpperCase()}</span></div>
-                      <div>Confidence: {(hoveredAgent.confidence * 100).toFixed(0)}%</div>
+                      <div className="text-cyan-400 font-semibold mb-1">
+                        {hoveredAgent.id}
+                      </div>
+                      <div>
+                        Trust Score:{" "}
+                        {(hoveredAgent.trustScore * 100).toFixed(0)}%
+                      </div>
+                      <div>
+                        Decision:{" "}
+                        <span
+                          className={`font-semibold ${
+                            hoveredAgent.decision === "yes"
+                              ? "text-green-400"
+                              : hoveredAgent.decision === "no"
+                              ? "text-red-400"
+                              : hoveredAgent.decision === "abstain"
+                              ? "text-yellow-400"
+                              : "text-gray-400"
+                          }`}
+                        >
+                          {hoveredAgent.decision.toUpperCase()}
+                        </span>
+                      </div>
+                      <div>
+                        Confidence: {(hoveredAgent.confidence * 100).toFixed(0)}
+                        %
+                      </div>
                       <div>Connections: {hoveredAgent.connections.length}</div>
                     </div>
                   </div>
                 )}
               </div>
-              
+
               {/* Controls */}
               <div className="flex flex-wrap items-center justify-between mt-6 pt-6 border-t border-gray-700">
                 <div className="flex items-center space-x-4">
                   <button
                     onClick={() => setIsRunning(!isRunning)}
                     className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
-                      isRunning 
-                        ? 'bg-red-500 hover:bg-red-600 text-white' 
-                        : 'bg-green-500 hover:bg-green-600 text-white'
+                      isRunning
+                        ? "bg-red-500 hover:bg-red-600 text-white"
+                        : "bg-green-500 hover:bg-green-600 text-white"
                     }`}
                   >
-                    {isRunning ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                    <span>{isRunning ? 'Pause' : 'Start'}</span>
+                    {isRunning ? (
+                      <Pause className="h-4 w-4" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
+                    <span>{isRunning ? "Pause" : "Start"}</span>
                   </button>
-                  
+
                   <button
                     onClick={resetSimulation}
                     className="flex items-center space-x-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-all"
@@ -314,7 +389,7 @@ const DemoPage = () => {
                     <span>Reset</span>
                   </button>
                 </div>
-                
+
                 <div className="flex items-center space-x-4 mt-4 sm:mt-0">
                   <div className="flex items-center space-x-2">
                     <Settings className="h-4 w-4 text-gray-400" />
@@ -329,7 +404,7 @@ const DemoPage = () => {
                     />
                     <span className="text-sm text-white w-6">{agentCount}</span>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-gray-400">Speed:</span>
                     <input
@@ -344,6 +419,11 @@ const DemoPage = () => {
                     <span className="text-sm text-white w-6">{speed}x</span>
                   </div>
                 </div>
+                {isFinished && result && (
+                  <div className="mt-8 text-center text-2xl text-cyan-400">
+                    🧠 Final Decision: <strong>{result.toUpperCase()}</strong>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -352,7 +432,9 @@ const DemoPage = () => {
           <div className="space-y-6">
             {/* Voting Results */}
             <div className="bg-gray-900 border border-purple-500/20 rounded-2xl p-6">
-              <h3 className="text-lg font-semibold mb-4 text-purple-400">Live Results</h3>
+              <h3 className="text-lg font-semibold mb-4 text-purple-400">
+                Live Results
+              </h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-green-400">✓ Yes</span>
@@ -371,7 +453,7 @@ const DemoPage = () => {
                   <span className="font-semibold">{stats.analyzing}</span>
                 </div>
               </div>
-              
+
               <div className="mt-4 pt-4 border-t border-gray-700">
                 <div className="text-sm text-gray-400">Current Status:</div>
                 <div className="text-lg font-semibold">
@@ -388,7 +470,9 @@ const DemoPage = () => {
 
             {/* Legend */}
             <div className="bg-gray-900 border border-cyan-500/20 rounded-2xl p-6">
-              <h3 className="text-lg font-semibold mb-4 text-cyan-400">Agent Legend</h3>
+              <h3 className="text-lg font-semibold mb-4 text-cyan-400">
+                Agent Legend
+              </h3>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center space-x-3">
                   <div className="w-4 h-4 bg-green-500 rounded-full"></div>
@@ -411,7 +495,7 @@ const DemoPage = () => {
                   <span>Agent Connections</span>
                 </div>
               </div>
-              
+
               <div className="mt-4 pt-4 border-t border-gray-700">
                 <div className="text-xs text-gray-400">
                   <Info className="h-4 w-4 inline mr-1" />
